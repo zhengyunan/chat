@@ -1,0 +1,306 @@
+<head>
+    <title>会话_聊天机器人</title>
+    <link href="./css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="./css/chat.css">
+    <script src="./js/jquery-1.9.1.min.js"></script>
+    <style>
+        .bor{
+            background-color:rgba(0,0,0,0.35);
+            }
+        .preview{
+            font-size: 14px;
+            display: inline-block;
+            overflow: hidden !important;
+            width: 70%;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            color: gray;
+          
+        }
+        .about{
+            width:200px;
+            height: 20px;
+            line-height: 20px;
+        }
+        .name{
+            width: 60%;
+            float: left;
+        }
+        .status{
+            width: 40%;
+            float:right;
+            float: left;
+            
+        }
+        .status i{
+            margin-left: 20px;
+            font-style:normal;
+        }
+        .fa{
+            display: block;
+            left:0;
+            bottom: 0;
+        }
+        .topname{
+            width: 100px;
+            height: 70px;
+            line-height: 70px;
+            text-align: center;
+            font-size: 24px;
+            color: #fff
+
+        }
+    </style>
+</head>
+<body lang="zh">
+   
+    <div class="abs cover contaniner">
+        <div class="abs cover pnl">
+            <div class="top pnl-head">
+                <div class="topname">
+                    {{friend}}
+                </div>
+            </div>
+            <div class="abs cover pnl-body" id="pnlBody">
+                <div class="abs cover pnl-left" v-for="(user,index) in userList" v-if="user.id==clicked">
+                    <div class="abs cover pnl-msgs scroll" id="show">
+                        <div class="msg min time" id="histStart">加载历史消息</div>
+                        <div class="pnl-list" id="hists">
+                            <!-- 历史消息 -->
+                        </div>
+                        <div class="pnl-list" id="msgs">
+                            <div class="msg " >
+                                <div :class="'msg-'+msg.type" v-for="msg in user.msg">
+                                    <div class="msg-host photo" style="background-image: url(./images/back.png)"></div>
+                                    <div class="msg-ball" title="今天 17:52:06"> {{msg.content}}</div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        <div class="pnl-list hide" id="unreadLine">
+                            <div class="msg min time unread">未读消息</div>
+                        </div>
+
+                        <ul>
+                            <!-- <li v-for="(v,k) in messages">
+                                有人说{{v}}
+                            </li> -->
+                        </ul>
+                    </div>
+                    <div class="abs bottom pnl-text">
+                        <div class="abs top pnl-warn" id="pnlWarn">
+                            <!-- <div class="fl btns rel pnl-warn-free">
+                                <img src="../Images/icon/Smile.png" class="kh warn-btn" title="表情" id="emojiBtn" />
+                                <img src="../Images/icon/pic.png" class="kh warn-btn" title="截屏" id="emojiBtn" />
+                                <img src="../Images/icon/camera.png" class="kh warn-btn" title="图片" id="emojiBtn" />
+                                <img src="../Images/icon/edit.png" class="kh warn-btn" title="保存" id="emojiBtn" />
+                            </div> -->
+                        </div>
+                        <div class="abs cover pnl-input">
+                            <textarea v-model="content" class="scroll" id="text" wrap="hard" placeholder="在此输入文字信息..."></textarea>
+                            <div class="abs atcom-pnl scroll hide" id="atcomPnl">
+                                <ul class="atcom" id="atcom"></ul>
+                            </div>
+                        </div>
+                        <div class="abs br pnl-btn" id="submit" style="background-color: rgb(32, 196, 202); color: rgb(255, 255, 255);" @click="submit">发送</div> 
+                        
+                    </div>
+                </div>
+                <div class="abs right pnl-right">
+                    <div class="slider-container hide"></div>
+                    <div class="pnl-right-content">
+                        <div class="pnl-tabs">
+                            
+                            <div class="tab-btn" id="rel-tab">好友列表</div>
+                        </div>
+                        <div class="people-list divcss5-b" id="people-list">
+                               
+                                <ul class="list" v-model="to">
+                                  <li class="clearfix" value="k"  v-for="(v,k) in userList" :class="{'bor':clicked==v.id}" @click="select(v)">
+                                    <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/195612/chat_avatar_01.jpg" alt="avatar" />
+                                    <div class="about">
+                                      <div class="name">{{v.username}}</div>
+                                      <div class="status">
+                                        <i class="fa fa-circle online">2:09 PM</i> 
+                                      </div>
+                                      <div>
+                                        <span class="preview">{{ v.msg.length!=0?v.msg[v.msg.length-1].content:'' }}</span>
+                                      </div>
+                                      
+                                    </div>
+                                  </li> 
+                                </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+<script src="./js/vue.min.js"></script>
+<script>
+    new Vue({
+        el:'.abs',
+        data:{
+            ws: null,  // 保存 WebSocket 对象
+            content:'',
+            userList:[],
+            to:'',
+            messages:[],
+            clicked:'',
+            orderid:[],
+            friend:''
+           
+        },
+        created:function(){
+            var token = localStorage.getItem('jwt_token')
+            if(token == undefined)
+              location.href = "login.html"
+            else{
+                //   链接聊天服务器
+                this.ws = new WebSocket('ws://127.0.0.1:8686?token='+token)
+                this.ws.onopen = this.open
+                this.ws.onmessage = this.message
+                this.ws.onerror = this.error 
+            }
+        },
+        methods:{
+            select(to){
+                this.clicked =to.id
+                this.to = to.id   
+                this.friend = to.username
+               
+            },
+
+            open:function(){
+                alert('连接成功！')
+            },
+            error: function(){
+                location.href="login.html"
+            },
+            message:function(e) {
+
+            // 消息1、所有用户的列表信息
+
+            // 消息2、用户说的话
+
+            // 解析JSON
+            let data = JSON.parse(e.data)
+            // console.log(data)
+            // 根据消息的类型发处理消息
+
+            if(data.type == 'users'){
+                for(let i=0;i<data.users.length;i++){
+                    this.userList.push({
+                        id:data.users[i].id,
+                        username:data.users[i].username,
+                        msg:[]
+                    })
+                }
+            }else if(data.type == 'newUser'){
+                this.userList.push({
+                        id:data.newUser.id,
+                        username:data.newUser.username,
+                        msg:[]
+               })
+            }else if(data.type == 'message'){
+                console.log(this.userList)
+                for(let i=0;i<this.userList.length;i++){
+
+                    if(this.userList[i].id==data.send){
+                        this.userList[i].msg.push({
+                            content:data.message,
+                            type:'you',
+                            
+                        })
+            
+                    }
+                }
+            }
+            },
+            submit(){
+              if(this.to != ''){
+                  if (this.content== "" || this.content == null)
+                {
+                    alert("发送信息为空，请输入！")
+                }
+
+                 // 发给某个人
+                    this.ws.send( this.to+':'+this.content )
+                    for(let i=0;i<this.userList.length;i++){
+                        // console.log(this.userList)
+                        if(this.userList[i].id ==this.to){ 
+                              this.userList[i].msg.push({
+                                 
+                                  content:this.content,
+                                  type:'me'
+                              })
+                        }
+                    }
+              }else{
+                    alert("还没有选择聊天的小伙伴~");
+              }
+                          // // 清空框  
+                          this.content = ''
+                
+                   
+                    // AddMsg(this.userLisr, SendMsgDispose(text.value));
+                    // console.log(this.to+':'+this.content)
+                    
+                
+              
+                    
+                    
+                },
+
+        }
+
+      
+    })
+
+//     // 发送信息
+// function SendMsg()
+// {
+//     var text = document.getElementById("text");
+//     if (text.value == "" || text.value == null)
+//     {
+//         alert("发送信息为空，请输入！")
+//     }
+//     else
+//     {   
+//         AddMsg('default', SendMsgDispose(text.value));
+//         text.value = "";
+//     }
+// }
+// // 发送的信息处理
+// function SendMsgDispose(detail)
+// {
+//     detail = detail.replace("\n", "<br>").replace(" ", "&nbsp;")
+//     return detail;
+// }
+
+// // 增加信息
+// function AddMsg(user,content)
+// {
+//     var str = CreadMsg(user, content);
+//     var msgs = document.getElementById("msgs");
+//     msgs.innerHTML = msgs.innerHTML + str;
+// }
+
+// // 生成内容
+// function CreadMsg(user, content)
+// {
+//     var str = "";
+//     if(user == 'default')
+//     {
+//         str = "<div class=\"msg guest\"><div class=\"msg-right\"><div class=\"msg-host headDefault\"></div><div class=\"msg-ball\" title=\"今天 17:52:06\">" + content +"</div></div></div>"
+//     }
+//     else
+//     {
+//         str = "<div class=\"msg robot\"><div class=\"msg-left\" worker=\"" + user + "\"><div class=\"msg-host photo\" style=\"background-image: url(./images/back.png)\"></div><div class=\"msg-ball\" title=\"今天 17:52:06\">" + content + "</div></div></div>";
+//     }
+//     return str;
+// }
+
+</script>
